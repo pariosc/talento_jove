@@ -1,84 +1,91 @@
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from config.conexionDB import get_conexion # Importamos desde config
+from typing import Optional
+from config.conexionDB import get_conexion 
 
 router = APIRouter()
 
-class Producto(BaseModel):
-    id_producto: int
-    id_tipo: int
-    descripcion: str
-    precio_compra: float
-    precio_venta: float
-    cantidad: int
-    activo: bool
+# Modelo adaptado a la tabla EMPRESAS
+class Empresa(BaseModel):
+    PK_id_empresa: int
+    FK_id_usuario: int
+    FK_id_sector: int
+    nombre_comercial: str
+    nit: str
+    persona_contacto: str
+    logo_empresa: Optional[str] = None
+    ubicacion: str
+    descripcion_empresa: Optional[str] = None
 
 @router.get("/")
-async def listar(conn = Depends(get_conexion)):
-    consulta = "Select id_producto, id_tipo, descripcion, precio_compra, precio_venta, cantidad, activo from tproducto"
+async def listar_empresas(conn = Depends(get_conexion)):
+    # Usamos comillas dobles para respetar las mayúsculas de tu esquema SQL
+    consulta = """SELECT "PK_id_empresa", "FK_id_usuario", "FK_id_sector", "nombre_comercial", 
+                         "nit", "persona_contacto", "ubicacion" FROM "EMPRESAS" """
     try:            
         async with conn.cursor() as cursor:
             await cursor.execute(consulta)
             return await cursor.fetchall()
     except Exception as e:
-        print(f"Error listado gral de Psycopg: {e}")
-        raise HTTPException(status_code=400, detail="Ocurrio un error, consulte con su Administrador")
-    
-@router.get("/{id_producto}")
-async def get_producto(id_producto: int, conn = Depends(get_conexion)):     
-    consulta = "SELECT id_producto, id_tipo, descripcion, precio_compra, precio_venta, cantidad, activo FROM tproducto WHERE id_producto = %s"
+        print(f"Error listado empresas: {e}")
+        raise HTTPException(status_code=400, detail="Error al obtener la lista de empresas")
+
+@router.get("/{id_empresa}")
+async def get_empresa(id_empresa: int, conn = Depends(get_conexion)):     
+    consulta = 'SELECT * FROM "EMPRESAS" WHERE "PK_id_empresa" = %s'
     try:
         async with conn.cursor() as cursor:
-            await cursor.execute(consulta, (id_producto,))
-            return await cursor.fetchone()
+            await cursor.execute(consulta, (id_empresa,))
+            resultado = await cursor.fetchone()
+            if not resultado:
+                raise HTTPException(status_code=404, detail="Empresa no encontrada")
+            return resultado
     except Exception as e:
-        print(f"Error al obtener producto de Psycopg: {e}")
-        raise HTTPException(status_code=400, detail="Ocurrio un error, consulte con su Administrador")
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/")
-async def insert_producto(producto: Producto, conn = Depends(get_conexion)):
-    consulta = """INSERT INTO tproducto(id_producto, id_tipo, descripcion, precio_compra, precio_venta, cantidad) VALUES(%s, %s, %s, %s, %s, %s)"""
-    parametros = (producto.id_producto, producto.id_tipo, producto.descripcion, 
-                  producto.precio_compra, producto.precio_venta, producto.cantidad)
+async def insert_empresa(empresa: Empresa, conn = Depends(get_conexion)):
+    consulta = """INSERT INTO "EMPRESAS" ("PK_id_empresa", "FK_id_usuario", "FK_id_sector", 
+                  "nombre_comercial", "nit", "persona_contacto", "ubicacion", "descripcion_empresa") 
+                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+    parametros = (empresa.PK_id_empresa, empresa.FK_id_usuario, empresa.FK_id_sector, 
+                  empresa.nombre_comercial, empresa.nit, empresa.persona_contacto, 
+                  empresa.ubicacion, empresa.descripcion_empresa)
     try:
         async with conn.cursor() as cursor:
             await cursor.execute(consulta, parametros)
             await conn.commit()
-            return {"mensaje": "Producto registrado exitosamente"}
+            return {"mensaje": "Empresa registrada exitosamente"}
     except Exception as e:
-        print(f"Error al registrar producto de Psycopg: {e}")
-        raise HTTPException(status_code=400, detail="Ocurrio un error, consulte con su Administrador")
+        print(f"Error al registrar: {e}")
+        raise HTTPException(status_code=400, detail="Error en el registro, verifique los IDs de usuario y sector")
 
-@router.put("/{id_producto}")
-async def update_producto(id_producto: int, producto: Producto, conn = Depends(get_conexion)):
-    consulta = "UPDATE tproducto SET id_tipo=%s, descripcion=%s, precio_compra=%s, precio_venta=%s, cantidad=%s WHERE id_producto = %s"
-    parametros = (producto.id_tipo, producto.descripcion, producto.precio_compra, producto.precio_venta, producto.cantidad, id_producto)
+@router.put("/{id_empresa}")
+async def update_empresa(id_empresa: int, empresa: Empresa, conn = Depends(get_conexion)):
+    consulta = """UPDATE "EMPRESAS" SET "FK_id_sector"=%s, "nombre_comercial"=%s, "nit"=%s, 
+                  "persona_contacto"=%s, "ubicacion"=%s, "descripcion_empresa"=%s 
+                  WHERE "PK_id_empresa" = %s"""
+    parametros = (empresa.FK_id_sector, empresa.nombre_comercial, empresa.nit, 
+                  empresa.persona_contacto, empresa.ubicacion, empresa.descripcion_empresa, id_empresa)
     try:
         async with conn.cursor() as cursor:
             await cursor.execute(consulta, parametros)
             if cursor.rowcount == 0:
-                raise HTTPException(status_code=404, detail="Producto no encontrado")
+                raise HTTPException(status_code=404, detail="Empresa no encontrada")
             await conn.commit()
-            return {"mensaje": "Producto actualizado exitosamente"}
-    except HTTPException:
-        raise # Re-raise HTTP exceptions (like the 404 above)
+            return {"mensaje": "Datos de empresa actualizados"}
     except Exception as e:
-        print(f"Error al actualizar producto de Psycopg: {e}")
-        raise HTTPException(status_code=400, detail="Ocurrio un error, consulte con su Administrador")
+        raise HTTPException(status_code=400, detail=str(e))
 
-@router.delete("/{id_producto}")
-async def delete_producto(id_producto: int, conn = Depends(get_conexion)):
-    consulta = "DELETE FROM tproducto WHERE id_producto = %s"
+@router.delete("/{id_empresa}")
+async def delete_empresa(id_empresa: int, conn = Depends(get_conexion)):
+    consulta = 'DELETE FROM "EMPRESAS" WHERE "PK_id_empresa" = %s'
     try:
         async with conn.cursor() as cursor:
-            await cursor.execute(consulta, (id_producto,))
+            await cursor.execute(consulta, (id_empresa,))
             if cursor.rowcount == 0:
-                raise HTTPException(status_code=404, detail="Producto no encontrado")
+                raise HTTPException(status_code=404, detail="Empresa no encontrada")
             await conn.commit()
-            return {"mensaje": "Producto eliminado exitosamente"}
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions (like the 404 above)
+            return {"mensaje": "Empresa eliminada correctamente"}
     except Exception as e:
-        print(f"Error al eliminar producto de Psycopg: {e}")
-        raise HTTPException(status_code=400, detail="Ocurrio un error, consulte con su Administrador")
+        raise HTTPException(status_code=400, detail="No se puede eliminar la empresa (puede tener ofertas activas)")
