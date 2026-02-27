@@ -23,7 +23,7 @@ class Persona(BaseModel):
 
 @router.get("/")
 async def listar(conn = Depends(get_conexion)):
-    print("Listando personas................")
+    print("Listando personas")
     # Ajustado a los nombres de columna de tu nueva BD
     consulta = """SELECT "PK_id_persona", "FK_id_usuario", "nombres", "apellidos", "ci", 
                          "telefono", "foto_perfil", "semestre", "habilidades", "experiencia_prev" 
