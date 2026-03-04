@@ -2,8 +2,10 @@ from fastapi import FastAPI
 from routes import (
     persona, 
     empresas, 
-    carrera, 
+    carrera,
+    sector, 
     usuario, 
+    ofertas, 
     roles, 
     persona_carrera, 
     postulaciones
@@ -41,10 +43,10 @@ app.include_router(empresas.router, prefix="/empresas", tags=["Perfiles"])
 # Estructura Académica y Relaciones
 app.include_router(carrera.router, prefix="/carreras", tags=["Académico"])
 app.include_router(persona_carrera.router, prefix="/persona-carrera", tags=["Académico"])
-
+app.include_router(sector.router, prefix="/sectores", tags=["Sectores"])
 # Procesos de Selección
 app.include_router(postulaciones.router, prefix="/postulaciones", tags=["Procesos"])
-
+app.include_router(ofertas.router, prefix="/ofertas", tags=["Académico"])
 @app.get("/", tags=["Inicio"])
 async def root():
     return {

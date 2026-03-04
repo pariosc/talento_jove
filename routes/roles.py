@@ -4,10 +4,11 @@ from config.conexionDB import get_conexion
 
 router = APIRouter()
 
-# Modelo para la tabla ROLES
-class Rol(BaseModel):
-    PK_id_rol: int
+class RolCreate(BaseModel):
     nombre_rol: str
+
+class Rol(RolCreate):
+    PK_id_rol: int
 
     class Config:
         from_attributes = True
@@ -39,20 +40,21 @@ async def get_rol(id_rol: int, conn = Depends(get_conexion)):
         raise HTTPException(status_code=400, detail="Error en la consulta")
 
 @router.post("/")
-async def insert_rol(rol: Rol, conn = Depends(get_conexion)):
-    consulta = 'INSERT INTO "ROLES"("PK_id_rol", "nombre_rol") VALUES(%s, %s)'
-    parametros = (rol.PK_id_rol, rol.nombre_rol)
+async def insert_rol(rol: RolCreate, conn = Depends(get_conexion)):
+    consulta = 'INSERT INTO "ROLES"("nombre_rol") VALUES(%s) RETURNING "PK_id_rol"'
+    parametros = (rol.nombre_rol,)
     try:
         async with conn.cursor() as cursor:
             await cursor.execute(consulta, parametros)
+            row = await cursor.fetchone()
             await conn.commit()
-            return {"mensaje": "Nuevo rol registrado exitosamente"}
+            return {"mensaje": "Nuevo rol registrado exitosamente", "id_rol": row["PK_id_rol"]}
     except Exception as e:
         print(f"Error al registrar rol: {e}")
         raise HTTPException(status_code=400, detail="No se pudo crear el rol (posible ID duplicado)")
 
 @router.put("/{id_rol}")
-async def update_rol(id_rol: int, rol: Rol, conn = Depends(get_conexion)):
+async def update_rol(id_rol: int, rol: RolCreate, conn = Depends(get_conexion)):
     consulta = 'UPDATE "ROLES" SET "nombre_rol"=%s WHERE "PK_id_rol" = %s'
     parametros = (rol.nombre_rol, id_rol)
     try:

@@ -6,21 +6,23 @@ from config.conexionDB import get_conexion
 
 router = APIRouter()
 
-# Modelo adaptado a la tabla USUARIOS
-class Usuario(BaseModel):
-    PK_id_usuario: int
+# 1. Modelo para CREAR y ACTUALIZAR (Sin el ID, porque la BD lo genera)
+class UsuarioCreate(BaseModel):
     FK_id_rol: int
-    email: str
+    email: EmailStr  # Aprovechamos la validación de EmailStr que importaste
     password: str
     estado: bool
     fecha_registro: Optional[date] = None
+
+# 2. Modelo de RESPUESTA (Hereda lo anterior y añade el ID)
+class Usuario(UsuarioCreate):
+    PK_id_usuario: int
 
     class Config:
         from_attributes = True
 
 @router.get("/")
 async def listar_usuarios(conn = Depends(get_conexion)):
-    # Usamos comillas dobles para que PostgreSQL reconozca las mayúsculas
     consulta = 'SELECT "PK_id_usuario", "FK_id_rol", "email", "estado", "fecha_registro" FROM "USUARIOS"'
     try:            
         async with conn.cursor() as cursor:
@@ -45,23 +47,24 @@ async def get_usuario(id_usuario: int, conn = Depends(get_conexion)):
         raise HTTPException(status_code=400, detail="Error en la consulta")
 
 @router.post("/")
-async def insert_usuario(usuario: Usuario, conn = Depends(get_conexion)):
-    # Nota: En una app real, aquí deberías hashear el password antes de insertar
-    consulta = """INSERT INTO "USUARIOS"("PK_id_usuario", "FK_id_rol", "email", "password", "estado", "fecha_registro") 
-                  VALUES(%s, %s, %s, %s, %s, %s)"""
-    parametros = (usuario.PK_id_usuario, usuario.FK_id_rol, usuario.email, 
+async def insert_usuario(usuario: UsuarioCreate, conn = Depends(get_conexion)): # Cambiamos a UsuarioCreate
+    # Quitamos PK_id_usuario del INSERT para que se asigne de forma automática
+    consulta = """INSERT INTO "USUARIOS"("FK_id_rol", "email", "password", "estado", "fecha_registro") 
+                  VALUES(%s, %s, %s, %s, %s) RETURNING "PK_id_usuario" """
+    parametros = (usuario.FK_id_rol, usuario.email, 
                   usuario.password, usuario.estado, usuario.fecha_registro or date.today())
     try:
         async with conn.cursor() as cursor:
             await cursor.execute(consulta, parametros)
+            row = await cursor.fetchone()
             await conn.commit()
-            return {"mensaje": "Usuario creado exitosamente"}
+            return {"mensaje": "Usuario creado exitosamente", "id_usuario": row["PK_id_usuario"]}
     except Exception as e:
         print(f"Error al registrar usuario: {e}")
         raise HTTPException(status_code=400, detail="El email ya existe o hay un error en los datos")
 
 @router.put("/{id_usuario}")
-async def update_usuario(id_usuario: int, usuario: Usuario, conn = Depends(get_conexion)):
+async def update_usuario(id_usuario: int, usuario: UsuarioCreate, conn = Depends(get_conexion)): # Cambiamos a UsuarioCreate
     consulta = """UPDATE "USUARIOS" SET "FK_id_rol"=%s, "email"=%s, "password"=%s, "estado"=%s 
                   WHERE "PK_id_usuario" = %s"""
     parametros = (usuario.FK_id_rol, usuario.email, usuario.password, usuario.estado, id_usuario)

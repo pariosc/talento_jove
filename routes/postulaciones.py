@@ -6,14 +6,15 @@ from config.conexionDB import get_conexion
 
 router = APIRouter()
 
-# Modelo para las postulaciones
-class Postulacion(BaseModel):
-    PK_id_postulacion: int
+class PostulacionCreate(BaseModel):
     FK_id_persona: int
     FK_id_oferta: int
     mensaje_solicitud: Optional[str] = None
     fecha_postulacion: Optional[date] = None
     estado_proceso: str # Ejemplo: 'Enviada', 'Visto', 'Rechazado', 'Seleccionado'
+
+class Postulacion(PostulacionCreate):
+    PK_id_postulacion: int
 
     class Config:
         from_attributes = True
@@ -39,14 +40,13 @@ async def listar_postulaciones(conn = Depends(get_conexion)):
         raise HTTPException(status_code=400, detail="Error al consultar las postulaciones")
 
 @router.post("/")
-async def crear_postulacion(postulacion: Postulacion, conn = Depends(get_conexion)):
+async def crear_postulacion(postulacion: PostulacionCreate, conn = Depends(get_conexion)):
     consulta = """
-        INSERT INTO "POSTULACIONES"("PK_id_postulacion", "FK_id_persona", "FK_id_oferta", 
+        INSERT INTO "POSTULACIONES"("FK_id_persona", "FK_id_oferta", 
                                      "mensaje_solicitud", "fecha_postulacion", "estado_proceso") 
-        VALUES(%s, %s, %s, %s, %s, %s)
+        VALUES(%s, %s, %s, %s, %s) RETURNING "PK_id_postulacion"
     """
     parametros = (
-        postulacion.PK_id_postulacion, 
         postulacion.FK_id_persona, 
         postulacion.FK_id_oferta, 
         postulacion.mensaje_solicitud, 
@@ -56,8 +56,9 @@ async def crear_postulacion(postulacion: Postulacion, conn = Depends(get_conexio
     try:
         async with conn.cursor() as cursor:
             await cursor.execute(consulta, parametros)
+            row = await cursor.fetchone()
             await conn.commit()
-            return {"mensaje": "Postulación enviada correctamente. ¡Mucho éxito!"}
+            return {"mensaje": "Postulación enviada correctamente. ¡Mucho éxito!", "id_postulacion": row["PK_id_postulacion"]}
     except Exception as e:
         print(f"Error al postular: {e}")
         raise HTTPException(status_code=400, detail="No se pudo completar la postulación")
@@ -75,7 +76,7 @@ async def actualizar_estado_postulacion(id_postulacion: int, nuevo_estado: str, 
             return {"mensaje": "Estado de postulación actualizado"}
     except Exception as e:
         print(f"Error al actualizar estado: {e}")
-        raise HTTPException(status_code=400, detail="Error en la actualización")
+        raise HTTPException(status_code=400, detail="Error al actualizar el estado de la postulación")
 
 @router.delete("/{id_postulacion}")
 async def cancelar_postulacion(id_postulacion: int, conn = Depends(get_conexion)):

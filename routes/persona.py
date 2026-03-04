@@ -5,9 +5,8 @@ from config.conexionDB import get_conexion
 
 router = APIRouter()
 
-# Modelo adaptado a la tabla PERSONAS de Talento Joven
-class Persona(BaseModel):
-    PK_id_persona: int
+# Modelo base para crear/actualizar (sin ID)
+class PersonaCreate(BaseModel):
     FK_id_usuario: int
     nombres: str
     apellidos: str
@@ -17,6 +16,10 @@ class Persona(BaseModel):
     semestre: int
     habilidades: Optional[str] = None
     experiencia_prev: Optional[str] = None
+
+# Modelo de respuesta (con ID)
+class Persona(PersonaCreate):
+    PK_id_persona: int
 
     class Config:
         from_attributes = True
@@ -51,24 +54,38 @@ async def get_persona(id_persona: int, conn = Depends(get_conexion)):
         raise HTTPException(status_code=400, detail="Error en la consulta")
 
 @router.post("/")
-async def insert_persona(persona: Persona, conn = Depends(get_conexion)):
-    consulta = """INSERT INTO "PERSONAS" ("PK_id_persona", "FK_id_usuario", "nombres", "apellidos", "ci", 
+async def insert_persona(persona: PersonaCreate, conn = Depends(get_conexion)):
+    consulta = """INSERT INTO "PERSONAS" ("FK_id_usuario", "nombres", "apellidos", "ci", 
                                        "telefono", "foto_perfil", "semestre", "habilidades", "experiencia_prev") 
-                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-    parametros = (persona.PK_id_persona, persona.FK_id_usuario, persona.nombres, persona.apellidos, 
+                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING "PK_id_persona" """
+    parametros = (persona.FK_id_usuario, persona.nombres, persona.apellidos, 
                   persona.ci, persona.telefono, persona.foto_perfil, persona.semestre, 
                   persona.habilidades, persona.experiencia_prev)
     try:
         async with conn.cursor() as cursor:
+            # Validar que el usuario tenga el rol correcto antes de crear el perfil
+            await cursor.execute("""
+                SELECT r."nombre_rol" FROM "USUARIOS" u 
+                JOIN "ROLES" r ON u."FK_id_rol" = r."PK_id_rol" 
+                WHERE u."PK_id_usuario" = %s
+            """, (persona.FK_id_usuario,))
+            rol_res = await cursor.fetchone()
+            
+            if not rol_res:
+                raise HTTPException(status_code=404, detail="Usuario no encontrado")
+            if rol_res["nombre_rol"].lower() not in ["postulante", "estudiante"]:
+                raise HTTPException(status_code=400, detail=f"El usuario tiene rol '{rol_res['nombre_rol']}', no puede crear un perfil de Persona")
+
             await cursor.execute(consulta, parametros)
+            row = await cursor.fetchone()
             await conn.commit()
-            return {"mensaje": "Registro en Talento Joven exitoso"}
+            return {"mensaje": "Registro en Talento Joven exitoso", "id_persona": row["PK_id_persona"]}
     except Exception as e:
         print(f"Error al registrar: {e}")
         raise HTTPException(status_code=400, detail="No se pudo completar el registro")
 
 @router.put("/{id_persona}")
-async def update_persona(id_persona: int, persona: Persona, conn = Depends(get_conexion)):
+async def update_persona(id_persona: int, persona: PersonaCreate, conn = Depends(get_conexion)):
     consulta = """UPDATE "PERSONAS" SET "nombres"=%s, "apellidos"=%s, "ci"=%s, "telefono"=%s, 
                          "foto_perfil"=%s, "semestre"=%s, "habilidades"=%s, "experiencia_prev"=%s 
                   WHERE "PK_id_persona" = %s"""

@@ -50,6 +50,21 @@ async def vincular_persona_carrera(pc: PersonaCarrera, conn = Depends(get_conexi
         print(f"Error al vincular: {e}")
         raise HTTPException(status_code=400, detail="No se pudo realizar la vinculación (verifique si el ID de persona o carrera existen)")
 
+@router.put("/{id_persona}/{id_carrera}")
+async def update_vinculacion(id_persona: int, id_carrera: int, pc: PersonaCarrera, conn = Depends(get_conexion)):
+    consulta = """UPDATE "PERSONAS_CARRERAS" SET "fecha_vinculacion"=%s, "estado_academico"=%s 
+                  WHERE "FK_id_persona" = %s AND "FK_id_carrera" = %s"""
+    parametros = (pc.fecha_vinculacion or date.today(), pc.estado_academico, id_persona, id_carrera)
+    try:
+        async with conn.cursor() as cursor:
+            await cursor.execute(consulta, parametros)
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Vinculación no encontrada")
+            await conn.commit()
+            return {"mensaje": "Estado académico actualizado"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Error al actualizar la vinculación")
+
 @router.delete("/{id_persona}/{id_carrera}")
 async def eliminar_vinculacion(id_persona: int, id_carrera: int, conn = Depends(get_conexion)):
     consulta = 'DELETE FROM "PERSONAS_CARRERAS" WHERE "FK_id_persona" = %s AND "FK_id_carrera" = %s'
