@@ -25,7 +25,7 @@ async def listar_postulaciones(conn = Depends(get_conexion)):
     consulta = """
         SELECT pos."PK_id_postulacion", per."nombres", per."apellidos", 
                ofe."titulo" as oferta_titulo, emp."nombre_comercial" as empresa,
-               pos."fecha_postulacion", pos."estado_proceso"
+               pos."fecha_postulacion", pos."estado_proceso", pos."mensaje_solicitud"
         FROM "POSTULACIONES" pos
         JOIN "PERSONAS" per ON pos."FK_id_persona" = per."PK_id_persona"
         JOIN "OFERTAS" ofe ON pos."FK_id_oferta" = ofe."PK_id_oferta"
@@ -63,21 +63,61 @@ async def crear_postulacion(postulacion: PostulacionCreate, conn = Depends(get_c
         print(f"Error al postular: {e}")
         raise HTTPException(status_code=400, detail="No se pudo completar la postulación")
 
-@router.put("/{id_postulacion}/estado")
-async def actualizar_estado_postulacion(id_postulacion: int, nuevo_estado: str, conn = Depends(get_conexion)):
-    # Este endpoint es útil para que la empresa cambie el estado (ej. de 'Enviada' a 'Visto')
+from fastapi import Body # Importar Body para el estado
+
+from fastapi import Body, APIRouter, Depends, HTTPException
+
+@router.put("/{id_postulacion}/estado") 
+async def actualizar_estado_postulacion(
+    id_postulacion: int, 
+    estado_proceso: str = Body(..., embed=True), # Cambiamos el nombre aquí
+    conn = Depends(get_conexion)
+):
     consulta = 'UPDATE "POSTULACIONES" SET "estado_proceso" = %s WHERE "PK_id_postulacion" = %s'
     try:
         async with conn.cursor() as cursor:
-            await cursor.execute(consulta, (nuevo_estado, id_postulacion))
+            await cursor.execute(consulta, (estado_proceso, id_postulacion))
             if cursor.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Postulación no encontrada")
             await conn.commit()
-            return {"mensaje": "Estado de postulación actualizado"}
+            return {"mensaje": f"Estado actualizado a: {estado_proceso}"}
+            
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error al actualizar estado: {e}")
-        raise HTTPException(status_code=400, detail="Error al actualizar el estado de la postulación")
+        raise HTTPException(status_code=400, detail="Error de base de datos al actualizar el estado")
 
+# 2. ACTUALIZAR DATOS GENERALES (Mensaje y fecha)
+class PostulacionUpdate(BaseModel):
+    mensaje_solicitud: Optional[str] = None
+    fecha_postulacion: Optional[date] = None
+
+@router.put("/{id_postulacion}")
+async def update_postulacion(
+    id_postulacion: int, 
+    postulacion: PostulacionUpdate, 
+    conn = Depends(get_conexion)
+):
+    consulta = """UPDATE "POSTULACIONES" SET 
+                  "mensaje_solicitud"=%s, "fecha_postulacion"=%s 
+                  WHERE "PK_id_postulacion" = %s"""
+    
+    parametros = (postulacion.mensaje_solicitud, postulacion.fecha_postulacion, id_postulacion)
+    
+    try:
+        async with conn.cursor() as cursor:
+            await cursor.execute(consulta, parametros)
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Postulación no encontrada")
+            await conn.commit()
+            return {"mensaje": "Postulación actualizada correctamente"}
+            
+    except HTTPException:
+        raise # Dejamos pasar el 404
+    except Exception as e:
+        print(f"Error al actualizar: {e}")
+        raise HTTPException(status_code=400, detail="Error de base de datos al actualizar")
 @router.delete("/{id_postulacion}")
 async def cancelar_postulacion(id_postulacion: int, conn = Depends(get_conexion)):
     consulta = 'DELETE FROM "POSTULACIONES" WHERE "PK_id_postulacion" = %s'

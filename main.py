@@ -8,7 +8,8 @@ from routes import (
     ofertas, 
     roles, 
     persona_carrera, 
-    postulaciones
+    postulaciones,
+    reportes
 )
 from config.conexionDB import lifespan
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,11 +43,16 @@ app.include_router(empresas.router, prefix="/empresas", tags=["Perfiles"])
 
 # Estructura Académica y Relaciones
 app.include_router(carrera.router, prefix="/carreras", tags=["Académico"])
-app.include_router(persona_carrera.router, prefix="/persona-carrera", tags=["Académico"])
+app.include_router(persona_carrera.router, prefix="/persona_carrera", tags=["Académico"])
 app.include_router(sector.router, prefix="/sectores", tags=["Sectores"])
+
 # Procesos de Selección
 app.include_router(postulaciones.router, prefix="/postulaciones", tags=["Procesos"])
-app.include_router(ofertas.router, prefix="/ofertas", tags=["Académico"])
+app.include_router(ofertas.router, prefix="/ofertas", tags=["Procesos"]) # <-- Cambié el tag a "Procesos"
+
+# Reportes y Estadísticas
+app.include_router(reportes.router, prefix="/reportes", tags=["Reportes"])
+
 @app.get("/", tags=["Inicio"])
 async def root():
     return {

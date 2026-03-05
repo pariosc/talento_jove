@@ -9,7 +9,7 @@ router = APIRouter()
 # 1. Modelo para CREAR y ACTUALIZAR (Sin el ID, porque la BD lo genera)
 class UsuarioCreate(BaseModel):
     FK_id_rol: int
-    email: EmailStr  # Aprovechamos la validación de EmailStr que importaste
+    email: EmailStr  
     password: str
     estado: bool
     fecha_registro: Optional[date] = None

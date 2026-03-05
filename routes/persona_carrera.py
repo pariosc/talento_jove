@@ -50,11 +50,11 @@ async def vincular_persona_carrera(pc: PersonaCarrera, conn = Depends(get_conexi
         print(f"Error al vincular: {e}")
         raise HTTPException(status_code=400, detail="No se pudo realizar la vinculación (verifique si el ID de persona o carrera existen)")
 
-@router.put("/{id_persona}/{id_carrera}")
-async def update_vinculacion(id_persona: int, id_carrera: int, pc: PersonaCarrera, conn = Depends(get_conexion)):
+@router.put("/")
+async def update_vinculacion(pc: PersonaCarrera, conn = Depends(get_conexion)):
     consulta = """UPDATE "PERSONAS_CARRERAS" SET "fecha_vinculacion"=%s, "estado_academico"=%s 
                   WHERE "FK_id_persona" = %s AND "FK_id_carrera" = %s"""
-    parametros = (pc.fecha_vinculacion or date.today(), pc.estado_academico, id_persona, id_carrera)
+    parametros = (pc.fecha_vinculacion or date.today(), pc.estado_academico, pc.FK_id_persona, pc.FK_id_carrera)
     try:
         async with conn.cursor() as cursor:
             await cursor.execute(consulta, parametros)
