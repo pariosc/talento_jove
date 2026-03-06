@@ -22,7 +22,6 @@ class Oferta(OfertaCreate):
 
 @router.get("/")
 async def listar_ofertas(conn = Depends(get_conexion)):
-    # JOIN para mostrar el nombre de la empresa en lugar de solo el ID
     consulta = """
         SELECT o."PK_id_oferta", e."nombre_comercial", o."titulo", 
                o."descripcion", o."requisitos", o."fecha_limite", o."estado"
@@ -77,6 +76,8 @@ async def update_oferta(id_oferta: int, oferta: OfertaCreate, conn = Depends(get
                   WHERE "PK_id_oferta" = %s"""
     parametros = (oferta.FK_id_empresa, oferta.titulo, 
                   oferta.descripcion, oferta.requisitos, oferta.fecha_limite, oferta.estado, id_oferta)
+    print(f"ACTUALIZANDO OFERTA")
+
     try:
         async with conn.cursor() as cursor:
             await cursor.execute(consulta, parametros)

@@ -79,3 +79,39 @@ async def obtener_efectividad_academica(conn = Depends(get_conexion)):
     except Exception as e:
         print(f"Error en reporte de efectividad: {e}")
         raise HTTPException(status_code=400, detail="Error al generar el reporte de efectividad")
+    
+    from pydantic import BaseModel
+from typing import List, Optional
+from datetime import date
+from fastapi import APIRouter, Depends, HTTPException
+from config.conexionDB import get_conexion
+
+router = APIRouter()
+
+# 1. El Modelo (Schema)
+class ReportePostulacion(BaseModel):
+    PK_id_postulacion: int
+    fecha_postulacion: Optional[date] # Opcional para evitar el error 500
+    estado_proceso: str
+    mensaje_solicitud: Optional[str]
+    nombre_candidato: str
+    semestre: Optional[int]
+    carrera: str
+    titulo_oferta: str
+    empresa: str
+
+    class Config:
+        from_attributes = True
+
+# 2. El Endpoint
+@router.get("/general", response_model=List[ReportePostulacion])
+async def reporte_general_postulaciones(conn = Depends(get_conexion)):
+    """Obtiene un reporte maestro con todas las postulaciones del sistema"""
+    consulta = 'SELECT * FROM vw_reporte_postulaciones'
+    try:
+        async with conn.cursor() as cursor:
+            await cursor.execute(consulta)
+            return await cursor.fetchall()
+    except Exception as e:
+        print(f"Error en reporte general: {e}")
+        raise HTTPException(status_code=400, detail="Error al generar el reporte general de postulaciones")

@@ -1,0 +1,90 @@
+/* front/css/estilos.css */
+
+:root {
+    /* Paleta de colores principal */
+    --color-primario: #003366; /* Azul institucional oscuro */
+    --color-secundario: #faf9f6; /* Amarillo/Dorado para resaltar */
+    --fondo-suave: #f8f9fa;
+    --texto-oscuro: #333333;
+}
+
+body {
+    background-color: var(--fondo-suave);
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: var(--texto-oscuro);
+}
+
+/* =========================================
+   Barra de Navegación (Navbar)
+   ========================================= */
+.navbar {
+    background-color: var(--color-primario) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    color: var(--color-secundario) !important;
+    letter-spacing: 0.5px;
+    font-size: 1.5rem;
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    margin: 0 5px;
+}
+
+/* Efecto al pasar el mouse por los enlaces del menú */
+.nav-link:hover {
+    color: var(--color-secundario) !important;
+    transform: translateY(-2px);
+}
+
+/* =========================================
+   Contenedores y Tarjetas (Cards)
+   ========================================= */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* =========================================
+   Botones Personalizados
+   ========================================= */
+.btn-primary {
+    background-color: var(--color-primario);
+    border-color: var(--color-primario);
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #002244; /* Un azul aún más oscuro */
+    border-color: #002244;
+}
+
+.btn-warning {
+    background-color: var(--color-secundario);
+    border-color: var(--color-secundario);
+    color: #000;
+    font-weight: 600;
+}
+
+.btn-warning:hover {
+    background-color: #f0efec;
+    border-color: #f8f7f2;
+}
+
+/* Tablas (para cuando listes empresas o usuarios) */
+.table thead th {
+    background-color: var(--color-primario);
+    color: white;
+    border-bottom: none;
+}

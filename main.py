@@ -53,6 +53,7 @@ app.include_router(ofertas.router, prefix="/ofertas", tags=["Procesos"]) # <-- C
 # Reportes y Estadísticas
 app.include_router(reportes.router, prefix="/reportes", tags=["Reportes"])
 
+
 @app.get("/", tags=["Inicio"])
 async def root():
     return {
